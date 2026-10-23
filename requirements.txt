@@ -1,0 +1,7 @@
+
+datasets==5.1.0
+sentence-transformers
+rank-bm25
+numpy
+pandas
+pytest
