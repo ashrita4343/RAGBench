@@ -88,6 +88,26 @@ The selected hybrid configuration was evaluated on the 150-query final-test spli
 
 These results describe this implementation and evaluation setup only. Because the final-test split was created after earlier experiments on the complete query set, the results are not an independent estimate from a pristine holdout.
 
+## Same-Split Retrieval Comparison
+
+BM25, semantic retrieval, and hybrid retrieval were evaluated on the same 150 final-test queries.
+
+| Method | Recall@3 | Recall@10 | MRR | nDCG@10 |
+|---|---:|---:|---:|---:|
+| BM25 | 0.6000 | 0.7196 | 0.5455 | 0.5843 |
+| Semantic | 0.6771 | 0.8140 | 0.6106 | 0.6562 |
+| Hybrid (alpha = 0.75) | 0.7427 | 0.8198 | 0.6911 | 0.7168 |
+
+Hybrid retrieval achieved the highest value across all four metrics in this experiment. The results suggest that combining lexical matching with dense semantic similarity improved retrieval quality for this evaluation setup.
+
+**Limitation:** The final-test split was created after earlier experiments examined results on the full 300-query set. This comparison uses the same queries for all three methods, but the split is not an untouched holdout. Independent evaluation on a newly established holdout is needed to support stronger generalization claims.
+
+Generated comparison files:
+
+- `results/scifact_same_split_comparison.csv`
+- `results/scifact_same_split_query_results.csv`
+
+
 ## Error Analysis
 
 The `error_analysis.py` script recomputes rankings for the final-test queries and generates detailed query-level CSV reports.
