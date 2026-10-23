@@ -1,4 +1,4 @@
-# RAGBench — Retrieval-Augmented Generation Research Framework
+# RAGBench: Retrieval-Augmented Generation Research Framework
 
 RAGBench is a Python research project for evaluating and comparing information retrieval methods on the SciFact scientific claim verification dataset.
 
@@ -9,143 +9,92 @@ The project investigates how keyword-based retrieval, dense semantic retrieval, 
 - Implement a BM25 keyword retrieval baseline.
 - Implement dense semantic retrieval using sentence embeddings.
 - Combine lexical and semantic scores using a tunable weighting parameter.
-- Evaluate retrieval quality with standard information retrieval metrics.
-- Run controlled experiments and save query-level results for analysis.
+- Evaluate retrieval quality using standard information retrieval metrics.
+- Tune hyperparameters on validation data and evaluate retrieval performance.
+- Analyze successful and failed queries to understand retrieval errors.
 
 ## Methods
 
-### 1. BM25 retrieval
+### 1. BM25 Retrieval
 
 Uses the `rank-bm25` library to rank scientific documents based on lexical matching.
 
-### 2. Semantic retrieval
+### 2. Semantic Retrieval
 
-Uses `sentence-transformers/all-MiniLM-L6-v2` to encode documents and queries into dense vector embeddings. Cosine similarity is computed using normalized embeddings.
+Uses `sentence-transformers/all-MiniLM-L6-v2` to encode documents and queries into dense vector embeddings. Similarity is calculated using dot products of normalized embeddings, equivalent to cosine similarity.
 
-### 3. Hybrid retrieval
+### 3. Hybrid Retrieval
 
 Combines normalized BM25 and semantic scores:
 
-`hybrid_score = (1 - alpha) * bm25_score + alpha * semantic_score`
+```text
+hybrid_score = (1 - alpha) * normalized_bm25_score
+             + alpha * normalized_semantic_score
+```
 
-The parameter `alpha` controls the relative contribution of semantic retrieval. An alpha of 0 represents BM25-only retrieval, while an alpha of 1 represents semantic-only retrieval.
+The parameter `alpha` controls the relative contribution of semantic retrieval:
+
+- `alpha = 0.0`: BM25-only retrieval.
+- `alpha = 1.0`: Semantic-only retrieval.
+- Intermediate values: Hybrid retrieval.
 
 ## Dataset
 
-This project uses SciFact, a scientific claim verification dataset, through Hugging Face's `BeIR/scifact` and `BeIR/scifact-qrels` datasets.
+This project uses the SciFact scientific claim verification dataset from Hugging Face's `BeIR/scifact` and associated relevance judgments.
 
-The current local experiment uses:
+The experiment uses:
 
-- **5,183** corpus documents
-- **300** evaluable test queries
-- **339** positive relevance judgments
+- **5,183 corpus documents**
+- **300 evaluable queries**
+- **339 positive relevance judgments**
 
-The evaluation uses the available relevance judgments; documents without a positive judgment are treated as nonrelevant for these metrics.
+The labeled queries were divided into:
 
-## Preliminary Results
+- **150 validation queries** for selecting the hybrid weight.
+- **150 final-test queries** for evaluating the selected configuration.
 
-The following results are from the current hybrid alpha sweep on 300 SciFact test queries.
+The experiment uses available positive relevance judgments. Documents without a positive judgment are treated as nonrelevant for these metrics.
 
-| Semantic weight (alpha) | Recall@3 | Recall@10 | MRR | nDCG@10 |
-|---:|---:|---:|---:|---:|
-| 0.00 | 0.5694 | 0.6862 | 0.5242 | 0.5597 |
-| 0.25 | 0.6201 | 0.7170 | 0.5752 | 0.6056 |
-| 0.50 | 0.6551 | 0.7796 | 0.6239 | 0.6573 |
-| 0.75 | 0.6874 | 0.7972 | 0.6522 | 0.6828 |
-| 1.00 | 0.6603 | 0.7833 | 0.6047 | 0.6451 |
+**Evaluation caveat:** The 150-query final-test split was created after earlier experiments had already examined results on the full set of 300 queries. It should therefore be considered a development evaluation rather than a completely untouched holdout. A future rigorous evaluation should use a newly established holdout that remains unseen during experimentation.
 
-The strongest result among the tested hybrid settings was alpha = 0.75. These findings are preliminary: alpha was selected using the test queries, so a separate validation split and a held-out final evaluation are needed before making a final performance claim.
+## Validation-Based Hyperparameter Tuning
 
-## Evaluation Metrics
+The hybrid weight `alpha` was selected from the following grid:
 
-- **Recall@k:** Fraction of judged-relevant documents retrieved in the top k, averaged over queries.
-- **MRR (Mean Reciprocal Rank):** Measures how highly the first relevant document is ranked.
-- **nDCG@10:** Measures ranking quality in the top 10 using graded relevance judgments.
+`0.00, 0.25, 0.50, 0.75, 1.00`
 
-## Project Structure
+The selection criterion was **nDCG@10 on the validation set**, with ties favoring the smaller alpha.
 
-```text
-RAGBench/
-├── ragbench.py
-├── ragbench_backup.py
-├── scifact_data.py
-├── scifact_benchmark.py
-├── scifact_semantic.py
-├── scifact_hybrid.py
-├── embed_cache.py
-├── tests/
-│   └── test_ragbench.py
-├── data/       # Generated locally; not tracked by Git
-├── cache/      # Cached embeddings; not tracked by Git
-└── results/    # Experiment outputs; not tracked by Git
-```
+| Alpha | Validation Recall@10 | Validation MRR | Validation nDCG@10 |
+|---:|---:|---:|---:|
+| 0.00 | 0.6528 | 0.5030 | 0.5351 |
+| 0.25 | 0.6678 | 0.5420 | 0.5679 |
+| 0.50 | 0.7494 | 0.5857 | 0.6203 |
+| 0.75 | 0.7747 | 0.6132 | 0.6487 |
+| 1.00 | 0.7527 | 0.5988 | 0.6340 |
 
-## Setup
+The selected configuration was **alpha = 0.75**, which achieved the highest validation nDCG@10 among the tested settings.
 
-Python 3.13 was used during development.
+## Final-Test Results
 
-Create and activate a virtual environment on Windows:
+The selected hybrid configuration was evaluated on the 150-query final-test split.
 
-```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-```
+| Metric | Final-test result |
+|---|---:|
+| Recall@3 | 0.7427 |
+| Recall@10 | 0.8198 |
+| MRR | 0.6911 |
+| nDCG@10 | 0.7168 |
 
-Install the dependencies:
+These results describe this implementation and evaluation setup only. Because the final-test split was created after earlier experiments on the complete query set, the results are not an independent estimate from a pristine holdout.
 
-```powershell
-python -m pip install --upgrade pip
-pip install datasets sentence-transformers rank-bm25 numpy pandas pytest
-```
+## Error Analysis
 
-## Running the Experiments
+The `error_analysis.py` script recomputes rankings for the final-test queries and generates detailed query-level CSV reports.
 
-Download and export the SciFact data:
+Across 150 queries:
 
-```powershell
-python scifact_data.py
-```
+- **114 queries (76%)** had at least one relevant document in the top three.
+- **36 queries (24%)** had no relevant document in the top three.
 
-Run the BM25 baseline:
-
-```powershell
-python scifact_benchmark.py
-```
-
-Run semantic retrieval:
-
-```powershell
-python scifact_semantic.py
-```
-
-Generate cached embeddings:
-
-```powershell
-python embed_cache.py
-```
-
-Run the hybrid alpha sweep:
-
-```powershell
-python scifact_hybrid.py
-```
-
-The scripts write experiment summaries and per-query results to the local `results/` directory. The embedding cache is stored in `cache/` and can be regenerated when the dataset or model changes.
-
-## Current Limitations and Future Work
-
-- Select hyperparameters using validation data rather than the final test set.
-- Standardize ranking and evaluation code across all retrieval methods.
-- Add automated tests for retrieval metrics and score fusion.
-- Analyze failed queries and compare relevant-document ranks.
-- Report runtime and memory requirements consistently.
-- Add confidence intervals and repeated experiments where appropriate.
-- Explore evidence-grounded generation as a future extension.
-
-## Skills Demonstrated
-
-Python · NLP · Sentence Embeddings · Information Retrieval · BM25 · Hybrid Search · Ranking Metrics · Experimental Evaluation · Dataset Processing · Reproducible Research
-
-## Disclaimer
-
-RAGBench is an educational research project. Reported results are specific to the current implementation, dataset split, model, and evaluation protocol; they should not be interpreted as evidence of general superiority across retrieval tasks.
+The reports include query text, relevant document IDs
