@@ -1,0 +1,19 @@
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+
+# Embedding cache (can be regenerated)
+cache/
+
+# Local datasets and generated experiment results
+data/
+results/
+
+# Editor and operating system files
+.vscode/
+.DS_Store
+Thumbs.db
